@@ -1,6 +1,6 @@
-owner : {
-    type: Schema.Types.ObjectId ,
-    ref:"User"
-}
+// owner : {
+//     type: Schema.Types.ObjectId ,
+//    // ref: "User"
 
-videoschema.plugin()
+
+// videoschema.plugin()
