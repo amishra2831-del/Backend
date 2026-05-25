@@ -6,7 +6,7 @@ import fs from "fs"
         api_secret: process.env.cloudinary_api_secret// Click 'View API Keys' above to copy your API secret
     });
 
-   const upload = async (localfilepath) =>{
+   const uploadoncloudnary = async (localfilepath) =>{
     try {
         if(!localfilepath) return null
         // upload
