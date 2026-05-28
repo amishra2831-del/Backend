@@ -1,27 +1,30 @@
-import {v2 as cloudnary} from "cloudnary"
+import { v2 as cloudinary } from "cloudinary"
 import fs from "fs"
- cloudinary.config({ 
-        cloud_name:  process.env.cloudinary_cloud_name,
-        api_key: process.env.cloudinary_api_key, 
-        api_secret: process.env.cloudinary_api_secret// Click 'View API Keys' above to copy your API secret
-    });
 
-   const uploadoncloudnary = async (localfilepath) =>{
+cloudinary.config({
+    cloud_name: process.env.cloudinary_cloud_name,
+    api_key: process.env.cloudinary_api_key,
+    api_secret: process.env.cloudinary_api_secret
+});
+
+const uploadoncloudnary = async (localfilepath) => {
     try {
-        if(!localfilepath) return null
+        if (!localfilepath) return null;
         // upload
-     const  response = await  cloudnary.uploader.upload(localfilepath ,{
-            resource_type: "auto"
-        })
-        //file has been uploaded
-        console.log("file is uploaded" , response.url);
+        const response = await cloudinary.uploader.upload(localfilepath, {
+            resource_type: "auto",
+        });
+        // file has been uploaded
+        console.log("file is uploaded", response.url);
         return response;
-        
     } catch (error) {
-            fs.unlinkSync(localfilepath) // remove locally temporary file
-            return null;
-        
+        try {
+            if (localfilepath && fs.existsSync(localfilepath)) fs.unlinkSync(localfilepath); // remove local temp file
+        } catch (e) {
+            // ignore
+        }
+        return null;
     }
-   } 
+};
 
-   export {upload}
+export { uploadoncloudnary };

@@ -1,65 +1,136 @@
 import { asynchandler } from "../utils/asynchandler.js";
-import { apierror} from "../utils/apiError.js";
-import { user } from "../models/user.model.js";
-import {cloudnary, upload} from "../utils/cloudnary.js";
-import {Apiresponse} from "../utils/Apiresponse.js";
+import { apiError } from "../utils/apiError.js";
+import { User } from "../models/user.model.js";
+import { uploadoncloudnary } from "../utils/cloudnary.js";
+import Apiresponse from "../utils/Apiresponse.js";
+// res -> _ wriiteen
+const generateaccesstokenandrefreshtoken = async (userid) => {
+    try {
+        const user = await User.findById(userid);
+        if (!user) throw new apiError(404, "User not found");
+        const accessToken = user.generateaccesstoken();
+        const refreshtoken = user.generaterefreshtoken();
+        user.refreshtoken = refreshtoken;
+        await user.save({ validateBeforeSave: false });
 
-const registeruser = asynchandler( async (req,res) =>{
-        // get  user detai;s from frontend
-        const {fullname,username,email,password} = req.body
-        console.log("email" , email);
-        // if(fullname == null){
-        //     throw new apierror (400 , "full name is required")
-        // }
+        return { accessToken, refreshtoken };
+    } catch (error) {
+        throw new apiError(500, "Something went wrong");
+    }
+};
 
-        if (
-            [fullname,username,emqil,password].some((field) =>
-                field?.trim() === ""
-            ) 
-        ) {
-                    throw new apierror (400 ,"All fields are requiredd")
-            }
+const registeruser = asynchandler(async (req, res) => {
+    // get user details from frontend
+//console.log(req.body);
 
-       const existeduser =    user.findOne({
-            $or: [{username} , {email}]
-        }) 
+    
+    const { fullname, username, email, password } = req.body;
 
-        if (existeduser) {
-            throw new apierror(409 , "User with email is already existed")
-        }
-          const avatarlocal =   req.files?.avatar[0]?.path;
-         const coverimage =  req.files?.coverimage[0]?.path ;
+    if ([fullname, username, email, password].some((field) => !field || field?.toString().trim() === "")) {
+        throw new apiError(400, "All fields are required");
+    }
 
-         if(!avatarlocal) {
-            throw new apierror(400 , "  Avatar file is necessary")
-         }
-      const avatar =  await uploadoncloudnary(avatarlocal)
-      const coverimage = await uploadoncloudnary(coverimage)
+    const existedUser = await User.findOne({
+        $or: [{ username }, { email }],
+    });
 
-      if(!avatar){
-                     throw new apierror(400 , "  Avatar file is necessary")
-      }
+    if (existedUser) {
+        throw new apiError(409, "User with provided username or email already exists");
+    }
 
-    const user =  await user.create({
+    const avatarlocal = req.files?.avatar?.[0]?.path;
+    const coverimagelocal = req.files?.coverimage?.[0]?.path;
+
+    if (!avatarlocal) {
+        throw new apiError(400, "Avatar file is required");
+    }
+
+    const avatar = await uploadoncloudnary(avatarlocal);
+    const coverimage = await uploadoncloudnary(coverimagelocal);
+
+    if (!avatar) {
+        throw new apiError(400, "Failed to upload avatar");
+    }
+
+    const newUser = await User.create({
         fullname,
-        avatar : avatar.url,
-        coverimage : coverimage?.url || " ",
+        avatar: avatar.url,
+        coverimage: coverimage?.url || "",
         email,
         password,
-        username: username.toLowerCase()
+        username: username.toLowerCase(),
+    }); 
 
-      })
+    console.log(req.body);
 
-const createduser =     await user.findbyId(user._id).select(
-    "-password -refreshtoken"
-)
+    const createdUser = await User.findById(newUser._id).select("-password -refreshtoken");
 
-if(!createduser) {
-    throw new apierror(500 , "Something went wrong while  registering the user")
-}
-            return res.status(201).json(
-                new Apiresponse(200 , createduser , "user registered successfully")
+    if (!createdUser) {
+        throw new apiError(500, "Something went wrong while registering the user");
+    }
+
+    return res.status(201).json(new Apiresponse(201, createdUser, "User registered successfully"));
+});
+
+
+const loginuser = asynchandler(async (req, res) => {
+            // req body -> data
+            // username or email
+            // find the user
+            // password check
+            // access and refresh token
+
+            // send in secure cookkie
+
+    const { email, username, password } = req.body;
+
+    if (!username && !email) {
+        throw new apiError(400, "username or email required");
+    }
+
+    const user = await User.findOne({ $or: [{ username }, { email }] });
+    if (!user) {
+        throw new apiError(400, "User does not exist");
+    }
+
+    const isPasswordvalid = await user.isPasswordCorrect(password);
+    if (!isPasswordvalid) {
+        throw new apiError(401, "Invalid user credentials");
+    }
+
+    const { accessToken, refreshtoken } = await generateaccesstokenandrefreshtoken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshtoken");
+
+    const options = { httpOnly: true, secure: true };
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshtoken", refreshtoken, options)
+        .json(
+            new Apiresponse(
+                200,
+                { user: loggedInUser, accessToken, refreshtoken },
+                "User logged Successfully"
             )
-})
+        );
+});
 
-export {registeruser};
+const loggedout = asynchandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { refreshtoken: undefined } },
+        { new: true }
+    );
+
+    const options = { httpOnly: true, secure: true };
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshtoken", options)
+        .json(new Apiresponse(200, {}, "User logged out"));
+});
+
+export { registeruser , loginuser, loggedout }
