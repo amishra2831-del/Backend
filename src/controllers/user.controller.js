@@ -281,6 +281,138 @@ const getcurrentuser = asynchandler(async (req, res) => {
             new Apiresponse(200, user, "Cover Image Updated")
         )
     })
+
+    const getuserchannelprofile = asynchandler(async(req,res)=>{
+        const {username} = req.params
+
+        if(!username?.trim()) {
+            throw new apiError(400, )
+        }
+
+     const channel =    await User.aggregate([
+            {
+                $match: {
+                    username: username?.toLowerCase()
+                }
+            },
+                {
+                    $lookup: {
+                        from: "subscriptions",
+                        localField: "_id",
+                        foreignField: "channel",
+                        as: "subscribers"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "subscriptions",
+                        localField: "_id",
+                        foreignField: "subscriber",
+                        as: "subscribed"
+                    }
+                },
+                {
+                    $addFields: {
+                        subscriberscount: {
+                            $size: "$subscribers"
+                        },
+
+                        channelsubscribedcount: {
+                            $size: "$subscribed"
+                        },
+                          issubscribed: {
+                            $cond: {
+                                if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                                then: true,
+                                else: false
+                            }
+                          }  
+                    }
+                },
+
+                {
+                    $project: {
+                        fullname: 1,
+                        username: 1,
+                        subscriberscount: 1,
+                        channelsubscribedcount: 1,
+                        issubscribed: 1,
+                        avatar: 1,
+                        coverimage: 1,
+                        email: 1
+                    }
+                }
+            
+        ])
+
+        if(!channel?.length){
+            throw new apiError(404, "channel does not exist")
+        }
+
+        return res
+        .status(200)
+        .json(
+            new Apiresponse(200, channel[0] ,"User channel fetched successfully")
+        )
+
+    })
+
+    const getwatchhistory = asynchandler(async(req,res) =>{
+        const user = await User.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.objectid(req.user._id)
+                }
+            },
+            {
+                $lookup: {
+                    from: "video",
+                    localField: "watchhistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullname: 1,
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    },
+                                    {
+                                        $addFields: {
+                                            owner: {
+                                                $first: "$owner"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+             }
+            }
+        ])
+
+        return res.
+        status(200)
+        .json(
+            new Apiresponse(
+                200,
+                user[0].watchhistory,
+                "Watch History Fetched Successfully!"
+            )
+        )
+    })
+
 });
 
-export { registeruser, loginuser, loggedout, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage }
+
+export { registeruser, loginuser, loggedout, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage, getuserchannelprofile, getwatchhistory }
