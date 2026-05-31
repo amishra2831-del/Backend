@@ -15,16 +15,22 @@ const uploadoncloudnary = async (localfilepath) => {
             resource_type: "auto",
         });
         // file has been uploaded
-        console.log("file is uploaded", response.url);
+        //console.log("file is uploaded", response.url);
+        fs.unlinkSync(localfilepath)
         return response;
     } catch (error) {
-        try {
-            if (localfilepath && fs.existsSync(localfilepath)) fs.unlinkSync(localfilepath); // remove local temp file
-        } catch (e) {
-            // ignore
+    console.log("Cloudinary Error:", error);
+
+    try {
+        if (localfilepath && fs.existsSync(localfilepath)) {
+            fs.unlinkSync(localfilepath);
         }
-        return null;
+    } catch (e) {
+        console.log("File delete error:", e);
     }
+
+    return null;
+}
 };
 
 export { uploadoncloudnary };

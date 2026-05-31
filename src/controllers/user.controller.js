@@ -38,9 +38,11 @@ const registeruser = asynchandler(async (req, res) => {
     if (existedUser) {
         throw new apiError(409, "User with provided username or email already exists");
     }
-
+console.log("req.files =", req.files);
     const avatarlocal = req.files?.avatar?.[0]?.path;
     const coverimagelocal = req.files?.coverimage?.[0]?.path;
+
+    
 
     if (!avatarlocal) {
         throw new apiError(400, "Avatar file is required");
@@ -121,7 +123,7 @@ const loginuser = asynchandler(async (req, res) => {
 const loggedout = asynchandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
-        { $set: { refreshtoken: undefined } },
+        { $unset: { refreshtoken: 1 } },
         { new: true }
     );
 
@@ -200,6 +202,7 @@ const changeCurrentPassword = asynchandler(async (req, res) => {
 
 const getcurrentuser = asynchandler(async (req, res) => {
     return res.status(200).json(new Apiresponse(200, req.user, "current user fetched successfully"));
+});
 
     const updateaccountdetails = asynchandler(async(req,res) =>{
         const {fullname, email} = req.body
@@ -412,7 +415,7 @@ const getcurrentuser = asynchandler(async (req, res) => {
         )
     })
 
-});
 
 
-export { registeruser, loginuser, loggedout, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage, getuserchannelprofile, getwatchhistory }
+
+export { registeruser, loginuser, loggedout, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage, getuserchannelprofile, getwatchhistory,changeCurrentPassword }

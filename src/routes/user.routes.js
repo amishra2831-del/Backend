@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { loggedout, loginuser, registeruser, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage, getuserchannelprofile, getwatchhistory } from "../controllers/user.controller.js";
+import { loggedout, loginuser, registeruser, refreshaccesstoken, getcurrentuser, updateaccountdetails, updateuseravatar, updateusercoverimage, getuserchannelprofile, getwatchhistory, changeCurrentPassword } from "../controllers/user.controller.js";
 import {upload} from  "../middlewares/multer.js"
-import { verifyJWT, changeCurrentPassword } from "../middlewares/auth.js";
+import { verifyJWT} from "../middlewares/auth.js";
 
 const router = Router()
 
@@ -9,11 +9,11 @@ router.route("/register").post(
     upload.fields([
 {
         name : "avatar" ,
-        maxcount :1
+        maxCount :1
 } ,
 {
     name: "coverimage" ,
-    maxcount : 1
+    maxCount : 1
 }
     ]),
     
